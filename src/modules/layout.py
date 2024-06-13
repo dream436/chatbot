@@ -8,7 +8,10 @@ class Layout:
         """
         st.markdown(
             f"""
-            <h1 style='text-align: center;'> Ask Robby about your {types_files} files ! 😁</h1>
+            <div style="display: flex;justify-content: center;">
+            <img src="https://static.wixstatic.com/media/42f43b_9a634dde85f641ca91f1096ceb17b0a2~mv2.png/v1/fill/w_163,h_101,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/logo_transparent_background%20(1).png"/>
+            </div>
+            <h1 style='text-align: center;'> Ask GQI GPT about your {types_files} files ! 😁</h1>
             """,
             unsafe_allow_html=True,
         )

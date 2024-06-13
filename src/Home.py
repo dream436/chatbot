@@ -1,63 +1,77 @@
+import os
+import importlib
+import sys
+import pandas as pd
 import streamlit as st
+from io import BytesIO
+from modules.robby_sheet.table_tool import PandasAgent
+from modules.layout import Layout
+from modules.utils import Utilities
+from modules.sidebar import Sidebar
+
+def reload_module(module_name):
+    """For update changes
+    made to modules in localhost (press r)"""
+
+    if module_name in sys.modules:
+        importlib.reload(sys.modules[module_name])
+    return sys.modules[module_name]
+
+table_tool_module = reload_module('modules.robby_sheet.table_tool')
+layout_module = reload_module('modules.layout')
+utils_module = reload_module('modules.utils')
+sidebar_module = reload_module('modules.sidebar')
 
 
-#Config
-st.set_page_config(layout="wide", page_icon="💬", page_title="Robby | Chat-Bot 🤖")
+st.set_page_config(layout="wide", page_icon="💬", page_title="GQI GPT | Chat-Bot 🤖")
+
+layout, sidebar, utils = Layout(), Sidebar(), Utilities()
+
+layout.show_header("CSV, Excel")
+
+user_api_key = utils.load_api_key()
+os.environ["OPENAI_API_KEY"] = user_api_key
 
 
-#Contact
-with st.sidebar.expander("📬 Contact"):
+if not user_api_key:
+    layout.show_api_key_missing()
 
-    st.write("**GitHub:**",
-"[yvann-hub/Robby-chatbot](https://github.com/yvann-hub/Robby-chatbot)")
+else:
+    st.session_state.setdefault("reset_chat", False)
 
-    st.write("**Medium:** "
-"[@yvann-hub](https://medium.com/@yvann-hub)")
+    uploaded_file = utils.handle_upload(["csv", "xlsx"])
 
-    st.write("**Twitter:** [@yvann_hub](https://twitter.com/yvann_hub)")
-    st.write("**Mail** : barbot.yvann@gmail.com")
-    st.write("**Created by Yvann**")
+    if uploaded_file:
+        sidebar.about()
+        
+        uploaded_file_content = BytesIO(uploaded_file.getvalue())
+        if uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or uploaded_file.type == "application/vnd.ms-excel":
+            df = pd.read_excel(uploaded_file_content)
+        else:
+            df = pd.read_csv(uploaded_file_content)
 
+        st.session_state.df = df
 
-#Title
-st.markdown(
-    """
-    <h2 style='text-align: center;'>Robby, your data-aware assistant 🤖</h1>
-    """,
-    unsafe_allow_html=True,)
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
+        csv_agent = PandasAgent()
 
-st.markdown("---")
+        with st.form(key="query"):
 
-
-#Description
-st.markdown(
-    """ 
-    <h5 style='text-align:center;'>I'm Robby, an intelligent chatbot created by combining 
-    the strengths of Langchain and Streamlit. I use large language models to provide
-    context-sensitive interactions. My goal is to help you better understand your data.
-    I support PDF, TXT, CSV, Youtube transcript 🧠</h5>
-    """,
-    unsafe_allow_html=True)
-st.markdown("---")
-
-
-#Robby's Pages
-st.subheader("🚀 Robby's Pages")
-st.write("""
-- **Robby-Chat**: General Chat on data (PDF, TXT,CSV) with a [vectorstore](https://github.com/facebookresearch/faiss) (index useful parts(max 4) for respond to the user) | works with [ConversationalRetrievalChain](https://python.langchain.com/en/latest/modules/chains/index_examples/chat_vector_db.html)
-- **Robby-Sheet** (beta): Chat on tabular data (CSV) | for precise information | process the whole file | works with [CSV_Agent](https://python.langchain.com/en/latest/modules/agents/toolkits/examples/csv.html) + [PandasAI](https://github.com/gventuri/pandas-ai) for data manipulation and graph creation
-- **Robby-Youtube**: Summarize YouTube videos with [summarize-chain](https://python.langchain.com/en/latest/modules/chains/index_examples/summarize.html)
-""")
-st.markdown("---")
-
-
-#Contributing
-st.markdown("### 🎯 Contributing")
-st.markdown("""
-**Robby is under regular development. Feel free to contribute and help me make it even more data-aware!**
-""", unsafe_allow_html=True)
-
-
-
-
+            query = st.text_input("Ask [PandasAI](https://github.com/gventuri/pandas-ai) (look the pandas-AI read-me for how use it)", value="", type="default", 
+                placeholder="e-g : How many rows ? "
+                )
+            submitted_query = st.form_submit_button("Submit")
+            reset_chat_button = st.form_submit_button("Reset Chat")
+            if reset_chat_button:
+                st.session_state["chat_history"] = []
+        if submitted_query:
+            result, captured_output = csv_agent.get_agent_response(df, query)
+            cleaned_thoughts = csv_agent.process_agent_thoughts(captured_output)
+            csv_agent.display_agent_thoughts(cleaned_thoughts)
+            csv_agent.update_chat_history(query, result)
+            csv_agent.display_chat_history()
+        if st.session_state.df is not None:
+            st.subheader("Current dataframe:")
+            st.write(st.session_state.df)
 

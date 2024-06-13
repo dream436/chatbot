@@ -21,9 +21,9 @@ port = \$PORT
 
 [theme]
 base = "light"
-primaryColor = "#89CFF0"
-backgroundColor = "#E0F7FE"
-secondaryBackgroundColor = "#FFFCE4"
+primaryColor = "white"
+backgroundColor = "white"
+secondaryBackgroundColor = "white"
 textColor = "#000000"
 font = "sans serif"
 EOL
